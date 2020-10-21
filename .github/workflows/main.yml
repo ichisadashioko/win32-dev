@@ -27,4 +27,5 @@ jobs:
     - name: upload artifacts
       uses: actions/upload-artifact@v2.2.0
       with:
-        path: Debug/*.exe
+        name: samples
+        path: Debug/*.[(exe),(pdb)]

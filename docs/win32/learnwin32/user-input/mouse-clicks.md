@@ -81,7 +81,7 @@ wc.style = CS_BDLCLKS;
 RegisterClass(&wc);
 ```
 
-If you set the `CS_DBLCLKS` flag as shown, the window will receive double-click notifications. A double click is indicated by a window message with 
+If you set the `CS_DBLCLKS` flag as shown, the window will receive double-click notifications. A double click is indicated by a window message with
 
 [nf-windowsx-get_x_lparam]: https://docs.microsoft.com/en-us/windows/win32/api/windowsx/nf-windowsx-get_x_lparam
 [nf-windowsx-get_y_lparam]: https://docs.microsoft.com/en-us/windows/win32/api/windowsx/nf-windowsx-get_y_lparam

@@ -54,3 +54,7 @@ An application that simply needs to display a pre-existing DIB can use the `SetD
 [nf-wingdi-setdibitstodevice]: https://docs.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-setdibitstodevice
 [nf-wingdi-stretchdibits]: https://docs.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-stretchdibits
 [nf-wingdi-bitblt]: https://docs.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-bitblt
+
+<!-- END -->
+
+[Next - Device-Dependent Bitmaps](./device-dependent-bitmaps.md)

@@ -48,3 +48,7 @@ The following topics describe different areas of bitmaps.
 - [Alpha Blending](./alpha-blending.md)
 - [Smooth Shading](./smooth-shading.md)
 - [ICM-Enabled Bitmap Functions](./icm-enabled-bitmap-functions.md)
+
+<!-- END -->
+
+[Next - Bitmap Classifications](./bitmaps-classifications/readme.md)

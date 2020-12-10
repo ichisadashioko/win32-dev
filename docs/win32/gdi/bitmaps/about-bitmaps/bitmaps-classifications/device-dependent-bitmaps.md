@@ -25,3 +25,7 @@ An application can create a DDB from a DIB by initializing the required structur
 [nf-wingdi-createbitmapindirect]: https://docs.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createbitmapindirect
 [nf-wingdi-createdibitmap]: https://docs.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createdibitmap
 [nf-wingdi-getdevicecaps]: https://docs.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getdevicecaps
+
+<!-- END -->
+
+[Next - Bitmap Header Types](../bitmap-header-types.md)

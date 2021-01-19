@@ -11,3 +11,5 @@ To store an image temporarily, your application must call `CreateCompatibleDC` t
 After the compatible device context is created and the appropriate bitmap has been selected into it, you can capture the image. The `BitBlt` function captures images. This function performs a bit block transfer that is, it copies data from a source bitmap into a destination bitmap. However, the two arguments to this function are not bitmap handles. Instead, `BitBlt` receives handles that identify two device contexts and copies bitmap data from a bitmap selected into the source DC into a bitmap selected into the target DC.
 
 The following example code is from an application that captures an image of the entire desktop, scales it down to the current window size and saves it to a file.
+
+<!-- WIP -->

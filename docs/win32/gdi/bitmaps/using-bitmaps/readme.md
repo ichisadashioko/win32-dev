@@ -8,3 +8,5 @@
 - [Drawing a Shaded Triangle]()
 - [Testing a Printer for JPEG or PNG Support]()
 - [Sizing a JPEG or PNG Image]()
+
+<!-- WIP -->

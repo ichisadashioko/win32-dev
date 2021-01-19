@@ -12,6 +12,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gdi-samples", "win32-sample
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gdi-capture-an-image", "win32-samples\gdi-capture-an-image\gdi-capture-an-image.vcxproj", "{07D4CFA0-737F-4047-B90D-9EC31EBDFF0F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GDI_CapturingAnImage", "GDI_CapturingAnImage\GDI_CapturingAnImage.vcxproj", "{91D18C19-223D-41E2-9A3E-9D8EA022864E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -27,6 +29,8 @@ Global
 		{C71EC741-CA6D-4EBC-89A8-BC4886C830F3}.Debug|x86.Build.0 = Debug|Win32
 		{07D4CFA0-737F-4047-B90D-9EC31EBDFF0F}.Debug|x86.ActiveCfg = Debug|Win32
 		{07D4CFA0-737F-4047-B90D-9EC31EBDFF0F}.Debug|x86.Build.0 = Debug|Win32
+		{91D18C19-223D-41E2-9A3E-9D8EA022864E}.Debug|x86.ActiveCfg = Debug|Win32
+		{91D18C19-223D-41E2-9A3E-9D8EA022864E}.Debug|x86.Build.0 = Debug|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

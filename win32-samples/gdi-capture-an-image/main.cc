@@ -1,10 +1,11 @@
 // GDI_CapturingAnImage.cpp : Defines the entry point for the application.
 //
 
-//#include "stdafx.h"
-//#include "GDI_CapturingAnImage.h"
 #include <Windows.h>
 #include <tchar.h>
+
+#include <stdio.h>
+#include <stdlib.h>
 
 // Global Variables:
 HINSTANCE hInst;                                              // current instance
@@ -17,7 +18,35 @@ BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
-int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow)
+int SaveBitmapImageToDisk(LPCWSTR filepath, BITMAPFILEHEADER bmfHeader, BITMAPINFOHEADER bi, char* lpbitmap, DWORD bmpSize)
+{
+  int retval = 0;
+
+  HANDLE fileHandle = CreateFileW(filepath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+  if (fileHandle == NULL)
+  {
+    fprintf(stderr, "CreateFileW failed at %s:%d\n", __FILE__, __LINE__);
+    fwprintf(stderr, L"Failed to create file at %s\n", filepath);
+    retval = -1;
+  }
+  else
+  {
+    // TODO convert bitmap to bytes
+    DWORD bytesWritten = 0;
+    WriteFile(fileHandle, (LPSTR)&bmfHeader, sizeof(BITMAPFILEHEADER), &bytesWritten, NULL);
+    WriteFile(fileHandle, (LPSTR)&bi, sizeof(BITMAPINFOHEADER), &bytesWritten, NULL);
+    WriteFile(fileHandle, (LPSTR)lpbitmap, bmpSize, &bytesWritten, NULL);
+
+    printf("%d bytes written\n", bytesWritten);
+
+    CloseHandle(fileHandle);
+  }
+
+  return retval;
+}
+
+int APIENTRY CreateAndStartWindow(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow)
 {
   UNREFERENCED_PARAMETER(hPrevInstance);
   UNREFERENCED_PARAMETER(lpCmdLine);
@@ -211,9 +240,6 @@ int CaptureAnImage(HWND hWnd)
   // which is pointed to by lpbitmap.
   GetDIBits(hdcWindow, hbmScreen, 0, (UINT)bmpScreen.bmHeight, lpbitmap, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
 
-  // A file is created, this is where we will save the screen capture.
-  HANDLE hFile = CreateFile(L"captureqwsx.bmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
   // Add the size of the headers to the size of the bitmap to get the total file size
   DWORD dwSizeofDIB = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
 
@@ -226,17 +252,11 @@ int CaptureAnImage(HWND hWnd)
   // bfType must always be BM for Bitmaps
   bmfHeader.bfType = 0x4D42;  // BM
 
-  DWORD dwBytesWritten = 0;
-  WriteFile(hFile, (LPSTR)&bmfHeader, sizeof(BITMAPFILEHEADER), &dwBytesWritten, NULL);
-  WriteFile(hFile, (LPSTR)&bi, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
-  WriteFile(hFile, (LPSTR)lpbitmap, dwBmpSize, &dwBytesWritten, NULL);
+  SaveBitmapImageToDisk(L"captureqwsx.bmp", bmfHeader, bi, lpbitmap, dwBmpSize);
 
   // Unlock and Free the DIB from the heap
   GlobalUnlock(hDIB);
   GlobalFree(hDIB);
-
-  // Close the handle for the file that was created
-  CloseHandle(hFile);
 
   // Clean up
   // done:
@@ -285,5 +305,5 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 int main()
 {
-  return wWinMain(GetModuleHandle(NULL), NULL, GetCommandLine(), SW_SHOWNORMAL);
+  return CreateAndStartWindow(GetModuleHandle(NULL), NULL, GetCommandLine(), SW_SHOWNORMAL);
 }

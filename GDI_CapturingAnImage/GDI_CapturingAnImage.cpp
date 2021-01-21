@@ -196,7 +196,7 @@ int CaptureAnImage(HWND hWnd)
 
   // Starting with 32-bit Windows, GlobalAlloc and LocalAlloc are implemented as wrapper functions that
   // call HeapAlloc using a handle to the process's default heap. Therefore, GlobalAlloc and LocalAlloc
-  // have greater overhead thatn HeapAlloc.
+  // have greater overhead than HeapAlloc.
   hDIB     = GlobalAlloc(GHND, dwBmpSize);
   lpbitmap = (char*)GlobalLock(hDIB);
 
@@ -220,7 +220,7 @@ int CaptureAnImage(HWND hWnd)
   bmfHeader.bfType = 0x4D42;  // BM
 
   WriteFile(hFile, (LPSTR)&bmfHeader, sizeof(BITMAPFILEHEADER), &dwBytesWritten, NULL);
-  WriteFile(hFile, (LPSTR)&bi, sizeof(BITMAPFILEHEADER), &dwBytesWritten, NULL);
+  WriteFile(hFile, (LPSTR)&bi, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
   WriteFile(hFile, (LPSTR)lpbitmap, dwBmpSize, &dwBytesWritten, NULL);
 
   // Unlock and Free the DIB from the heap.
@@ -275,7 +275,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
       PAINTSTRUCT ps;
       HDC hdc = BeginPaint(hWnd, &ps);
-      // TODO: Add any drawing code that uses hdc here...
+      CaptureAnImage(hWnd);
       EndPaint(hWnd, &ps);
     }
     break;

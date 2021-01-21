@@ -173,6 +173,7 @@ int CaptureAnImage(HWND hWnd)
         0, 0,
         rcClient.right, rcClient.bottom,
         hdcScreen,
+        0, 0,
         GetSystemMetrics(SM_CXSCREEN),
         GetSystemMetrics(SM_CYSCREEN),
         SRCCOPY))

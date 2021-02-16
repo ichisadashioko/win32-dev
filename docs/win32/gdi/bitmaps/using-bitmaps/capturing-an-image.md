@@ -347,4 +347,10 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 }
 ```
 
-<!-- WIP -->
+<!-- END -->
+
+![Next - Scaling an Image](./scaling-an-image.md)
+
+__shioko's note__
+
+I am lost with bitmap's related APIs because it refers to both the "image" that is display on a device and the "image" to be stored on disk. The APIs seems to be all over the place with generic function name like `GetObject`.

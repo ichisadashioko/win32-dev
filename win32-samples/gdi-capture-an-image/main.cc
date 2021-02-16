@@ -22,7 +22,7 @@ INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 // clang-format off
 _Success_(return == 0)
 int SaveBitmapImageToDisk(
-    _In_ LPCWSTR filepath,
+    _In_ const char* filepath,
     _In_ BITMAPFILEHEADER bmfHeader,
     _In_ BITMAPINFOHEADER bi,
     _In_ char* lpbitmap,
@@ -31,25 +31,44 @@ int SaveBitmapImageToDisk(
   // clang-format on
   int retval = 0;
 
-  HANDLE fileHandle = CreateFileW(filepath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-  if (fileHandle == NULL)
+#pragma warning(disable : 4996)
+  FILE* file_ptr = fopen(filepath, "wb");
+  if (file_ptr == NULL)
   {
-    fprintf(stderr, "CreateFileW failed at %s:%d\n", __FILE__, __LINE__);
-    fwprintf(stderr, L"Failed to create file at %s\n", filepath);
+    fprintf(stderr, "fopen failed at %s:%d\n", __FILE__, __LINE__);
+    fprintf(stderr, "failed to create file at %s\n", filepath);
     retval = -1;
   }
   else
   {
-    // TODO convert bitmap to bytes
-    DWORD bytesWritten = 0;
-    WriteFile(fileHandle, (LPSTR)&bmfHeader, sizeof(BITMAPFILEHEADER), &bytesWritten, NULL);
-    WriteFile(fileHandle, (LPSTR)&bi, sizeof(BITMAPINFOHEADER), &bytesWritten, NULL);
-    WriteFile(fileHandle, (LPSTR)lpbitmap, bmpSize, &bytesWritten, NULL);
+    // TODO convert bitmap to raw bytes
 
-    printf("%d bytes written\n", bytesWritten);
+    size_t cb_written_total          = 0;
+    size_t cb_expected_written_total = 0;
+    size_t cb_written                = 0;
+    size_t cb_expected_written       = 0;
 
-    CloseHandle(fileHandle);
+    cb_expected_written = sizeof(BITMAPFILEHEADER);
+    cb_written          = fwrite(&bmfHeader, 1, cb_expected_written, file_ptr);
+    cb_expected_written_total += cb_expected_written;
+    cb_written_total += cb_written;
+    printf("[BITMAPFILEHEADER] wrote %d/%d bytes\n", cb_written, cb_expected_written);
+
+    cb_expected_written = sizeof(BITMAPINFOHEADER);
+    cb_written          = fwrite(&bi, 1, cb_expected_written, file_ptr);
+    cb_expected_written_total += cb_expected_written;
+    cb_written_total += cb_written;
+    printf("[BITMAPINFOHEADER] wrote %d/%d bytes\n", cb_written, cb_expected_written);
+
+    cb_expected_written = bmpSize;
+    cb_written          = fwrite(lpbitmap, 1, cb_expected_written, file_ptr);
+    cb_expected_written_total += cb_expected_written;
+    cb_written_total += cb_written;
+    printf("[BMP image data] wrote %d/%d bytes\n", cb_written, cb_expected_written);
+
+    printf("wrote total %d/%d bytes\n", cb_written_total, cb_expected_written_total);
+
+    fclose(file_ptr);
   }
 
   return retval;
@@ -320,7 +339,7 @@ int CaptureAnImage(HWND hWnd)
           // clang-format on
           if (return_code == 0)
           {
-            SaveBitmapImageToDisk(L"captureqwsx.bmp", bitmap_file_header, bitmap_info_header, bitmap_image_data, cb_bitmap_image_data);
+            SaveBitmapImageToDisk("captureqwsx.bmp", bitmap_file_header, bitmap_info_header, bitmap_image_data, cb_bitmap_image_data);
             free(bitmap_image_data);
           }
           else

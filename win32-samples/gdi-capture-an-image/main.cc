@@ -1,11 +1,12 @@
-// GDI_CapturingAnImage.cpp : Defines the entry point for the application.
-//
-
+#pragma once
 #include <Windows.h>
 #include <tchar.h>
+#include <sal.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+
+#define VK_S_KEY 0x53
 
 // Global Variables:
 HINSTANCE hInst;                                              // current instance
@@ -18,8 +19,16 @@ BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
-int SaveBitmapImageToDisk(LPCWSTR filepath, BITMAPFILEHEADER bmfHeader, BITMAPINFOHEADER bi, char* lpbitmap, DWORD bmpSize)
+// clang-format off
+_Success_(return == 0)
+int SaveBitmapImageToDisk(
+    _In_ LPCWSTR filepath,
+    _In_ BITMAPFILEHEADER bmfHeader,
+    _In_ BITMAPINFOHEADER bi,
+    _In_ char* lpbitmap,
+    _In_ DWORD bmpSize)
 {
+  // clang-format on
   int retval = 0;
 
   HANDLE fileHandle = CreateFileW(filepath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -42,6 +51,94 @@ int SaveBitmapImageToDisk(LPCWSTR filepath, BITMAPFILEHEADER bmfHeader, BITMAPIN
 
     CloseHandle(fileHandle);
   }
+
+  return retval;
+}
+
+// clang-format off
+_Success_(return == 0)
+int PrepareBitmapStructuresForSaving(
+    _In_ HDC hdc,
+    _In_ HBITMAP hbm,
+    _Inout_ BITMAPFILEHEADER* out_bitmap_file_header,
+    _Inout_ BITMAPINFOHEADER* out_bitmap_info_header,
+    _Inout_ BITMAP* out_bitmap,
+    _Outptr_ char** out_bitmap_image_data,
+    _Inout_ DWORD* out_bitmap_image_data_cb)
+{
+  // clang-format on
+  int retval = 0;
+
+  BITMAPFILEHEADER bmfHeader;
+  BITMAPINFOHEADER bi;
+  BITMAP bm;
+
+  GetObject(hbm, sizeof(BITMAP), &bm);
+
+  bi.biSize          = sizeof(BITMAPINFOHEADER);
+  bi.biWidth         = bm.bmWidth;
+  bi.biHeight        = bm.bmHeight;
+  bi.biPlanes        = 1;
+  bi.biBitCount      = 32;
+  bi.biCompression   = BI_RGB;
+  bi.biSizeImage     = 0;
+  bi.biXPelsPerMeter = 0;
+  bi.biYPelsPerMeter = 0;
+  bi.biClrUsed       = 0;
+  bi.biClrImportant  = 0;
+
+  DWORD cb_bitmap_image_data = ((bm.bmWidth * bi.biBitCount + 31) / 32) * 4 * bm.bmHeight;
+
+  char* bitmap_image_data = (char*)malloc(cb_bitmap_image_data);
+  if (bitmap_image_data == NULL)
+  {
+    fprintf(stderr, "malloc failed at %s:%d\n", __FILE__, __LINE__);
+    retval = -1;
+  }
+  else
+  {
+    // Gets the "bits" from the bitmap and copies them into a buffer
+    // which is pointed to by bitmap_image_data.
+    GetDIBits(hdc, hbm, 0, (UINT)bm.bmHeight, bitmap_image_data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
+
+    // Add the size of the headers to the size of the bitmap to get the total file size
+    DWORD dwSizeofDIB = cb_bitmap_image_data + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+
+    // Offset to where the actual bitmap bits start.
+    bmfHeader.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER);
+
+    // Size of the file
+    bmfHeader.bfSize = dwSizeofDIB;
+
+    // bfType must always be BM for Bitmaps
+    bmfHeader.bfType = 0x4D42;  // BM
+
+    // memcpy(out_bitmap_info_header, (&bi), sizeof(BITMAPINFOHEADER));
+    // memcpy(out_bitmap_file_header, (&bmfHeader), sizeof(BITMAPFILEHEADER));
+    // memcpy(out_bitmap, (&bm), sizeof(BITMAP));
+    (*out_bitmap_info_header) = bi;
+    (*out_bitmap_file_header) = bmfHeader;
+    (*out_bitmap)             = bm;
+
+    // return the bitmap bytes
+    // free(bitmap_image_data);
+    (*out_bitmap_image_data)    = bitmap_image_data;
+    (*out_bitmap_image_data_cb) = cb_bitmap_image_data;
+  }
+
+  return retval;
+}
+
+int CaptureAndSaveScreenAsBitmap()
+{
+  int retval = 0;
+
+  // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getdc
+
+  // call GetDC(NULL) to get the device context for the "entire screen"
+  HDC hdcScreen = GetDC(NULL);
+
+  // TODO implement the function
 
   return retval;
 }
@@ -157,7 +254,6 @@ int CaptureAnImage(HWND hWnd)
   HDC hdcWindow;
   HDC hdcMemDC      = NULL;
   HBITMAP hbmScreen = NULL;
-  BITMAP bmpScreen;
 
   // Retrieve the handle to a display device context for the client
   // area of the window.
@@ -170,98 +266,79 @@ int CaptureAnImage(HWND hWnd)
   if (!hdcMemDC)
   {
     MessageBox(hWnd, L"CreateCompatibleDC has failed", L"Failed", MB_OK);
-    // goto done;
-    exit(-1);
   }
-
-  // Get the client area for size calculation
-  RECT rcClient;
-  GetClientRect(hWnd, &rcClient);
-
-  // This is the best stretch mode
-  SetStretchBltMode(hdcWindow, HALFTONE);
-
-  // The source DC is the entire screen and the destination DC is the current window (HWND)
-  if (!StretchBlt(hdcWindow, 0, 0, rcClient.right, rcClient.bottom, hdcScreen, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), SRCCOPY))
+  else
   {
-    MessageBox(hWnd, L"StretchBlt has failed", L"Failed", MB_OK);
-    // goto done;
-    exit(-1);
+    // Get the client area for size calculation
+    RECT rcClient;
+    GetClientRect(hWnd, &rcClient);
+
+    // This is the best stretch mode
+    SetStretchBltMode(hdcWindow, HALFTONE);
+
+    // The source DC is the entire screen and the destination DC is the current window (HWND)
+    if (!StretchBlt(hdcWindow, 0, 0, rcClient.right, rcClient.bottom, hdcScreen, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), SRCCOPY))
+    {
+      MessageBox(hWnd, L"StretchBlt has failed", L"Failed", MB_OK);
+    }
+    else
+    {
+      // Create a compatible bitmap from the Window DC
+      hbmScreen = CreateCompatibleBitmap(hdcWindow, rcClient.right - rcClient.left, rcClient.bottom - rcClient.top);
+
+      if (!hbmScreen)
+      {
+        MessageBox(hWnd, L"CreateCompatibleBitmap Failed", L"Failed", MB_OK);
+      }
+      else
+      {
+        // Select the compatible bitmap into the compatible memory DC.
+        SelectObject(hdcMemDC, hbmScreen);
+
+        // Bit block transfer into our compatible memory DC.
+        if (!BitBlt(hdcMemDC, 0, 0, rcClient.right - rcClient.left, rcClient.bottom - rcClient.top, hdcWindow, 0, 0, SRCCOPY))
+        {
+          MessageBox(hWnd, L"BitBlt has failed", L"Failed", MB_OK);
+        }
+        else
+        {
+          BITMAPINFOHEADER bitmap_info_header;
+          BITMAPFILEHEADER bitmap_file_header;
+          BITMAP bitmap;
+          char* bitmap_image_data = NULL;
+          DWORD cb_bitmap_image_data;
+
+          // clang-format off
+          int return_code = PrepareBitmapStructuresForSaving(
+            hdcWindow,
+            hbmScreen,
+            &bitmap_file_header,
+            &bitmap_info_header,
+            &bitmap,
+            &bitmap_image_data,
+            &cb_bitmap_image_data);
+          // clang-format on
+          if (return_code == 0)
+          {
+            SaveBitmapImageToDisk(L"captureqwsx.bmp", bitmap_file_header, bitmap_info_header, bitmap_image_data, cb_bitmap_image_data);
+            free(bitmap_image_data);
+          }
+          else
+          {
+            fprintf(stderr, "PrepareBitmapStructuresForSaving failed at %s:%d\n", __FILE__, __LINE__);
+          }
+
+          // TODO disable image saving and keep the capture image aspect ratio while rendering
+        }
+
+        DeleteObject(hbmScreen);
+      }
+    }
+
+    DeleteObject(hdcMemDC);
   }
-
-  // Create a compatible bitmap from the Window DC
-  hbmScreen = CreateCompatibleBitmap(hdcWindow, rcClient.right - rcClient.left, rcClient.bottom - rcClient.top);
-
-  if (!hbmScreen)
-  {
-    MessageBox(hWnd, L"CreateCompatibleBitmap Failed", L"Failed", MB_OK);
-    // goto done;
-    exit(-1);
-  }
-
-  // Select the compatible bitmap into the compatible memory DC.
-  SelectObject(hdcMemDC, hbmScreen);
-
-  // Bit block transfer into our compatible memory DC.
-  if (!BitBlt(hdcMemDC, 0, 0, rcClient.right - rcClient.left, rcClient.bottom - rcClient.top, hdcWindow, 0, 0, SRCCOPY))
-  {
-    MessageBox(hWnd, L"BitBlt has failed", L"Failed", MB_OK);
-    // goto done;
-    exit(-1);
-  }
-
-  // Get the BITMAP from the HBITMAP
-  GetObject(hbmScreen, sizeof(BITMAP), &bmpScreen);
-
-  BITMAPFILEHEADER bmfHeader;
-  BITMAPINFOHEADER bi;
-
-  bi.biSize          = sizeof(BITMAPINFOHEADER);
-  bi.biWidth         = bmpScreen.bmWidth;
-  bi.biHeight        = bmpScreen.bmHeight;
-  bi.biPlanes        = 1;
-  bi.biBitCount      = 32;
-  bi.biCompression   = BI_RGB;
-  bi.biSizeImage     = 0;
-  bi.biXPelsPerMeter = 0;
-  bi.biYPelsPerMeter = 0;
-  bi.biClrUsed       = 0;
-  bi.biClrImportant  = 0;
-
-  DWORD dwBmpSize = ((bmpScreen.bmWidth * bi.biBitCount + 31) / 32) * 4 * bmpScreen.bmHeight;
-
-  // Starting with 32-bit Windows, GlobalAlloc and LocalAlloc are implemented as wrapper functions that
-  // call HeapAlloc using a handle to the process's default heap. Therefore, GlobalAlloc and LocalAlloc
-  // have greater overhead than HeapAlloc.
-  HANDLE hDIB    = GlobalAlloc(GHND, dwBmpSize);
-  char* lpbitmap = (char*)GlobalLock(hDIB);
-
-  // Gets the "bits" from the bitmap and copies them into a buffer
-  // which is pointed to by lpbitmap.
-  GetDIBits(hdcWindow, hbmScreen, 0, (UINT)bmpScreen.bmHeight, lpbitmap, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
-
-  // Add the size of the headers to the size of the bitmap to get the total file size
-  DWORD dwSizeofDIB = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-
-  // Offset to where the actual bitmap bits start.
-  bmfHeader.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER);
-
-  // Size of the file
-  bmfHeader.bfSize = dwSizeofDIB;
-
-  // bfType must always be BM for Bitmaps
-  bmfHeader.bfType = 0x4D42;  // BM
-
-  SaveBitmapImageToDisk(L"captureqwsx.bmp", bmfHeader, bi, lpbitmap, dwBmpSize);
-
-  // Unlock and Free the DIB from the heap
-  GlobalUnlock(hDIB);
-  GlobalFree(hDIB);
 
   // Clean up
-  // done:
-  DeleteObject(hbmScreen);
-  DeleteObject(hdcMemDC);
   ReleaseDC(NULL, hdcScreen);
   ReleaseDC(hWnd, hdcWindow);
 
@@ -287,6 +364,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
     case WM_CREATE:
     {
+      break;
+    }
+    case WM_KEYUP:
+    {
+      int virtualKeyCode = (int)wParam;
+      if (virtualKeyCode == VK_S_KEY)
+      {
+        // TODO capture and write image to disk
+      }
       break;
     }
     case WM_PAINT:

@@ -9,6 +9,8 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+#include <CommCtrl.h>
+#include <commdlg.h>
 
 // Global Variables:
 HINSTANCE hInst;                                    // current instance
@@ -19,7 +21,6 @@ WCHAR szWindowClass[] = TEXT("GDIBITMAPSCALING");   // the main window class nam
 ATOM MyRegisterClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
@@ -97,6 +98,111 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
   return TRUE;
 }
 
+WORD DIBNumColors(LPVOID lpv)
+{
+  INT bits;
+  LPBITMAPINFOHEADER lpbih = (LPBITMAPINFOHEADER)lpv;
+  LPBITMAPCOREHEADER lpbch = (LPBITMAPCOREHEADER)lpv;
+
+  // With the BITMAPINFO format headers, the size of the palette is in biClrUsed, whereas in the BITMAPCORE - style headers, it is dependent on the bits per pixel (= 2 raised to the power of bits/pixel).
+
+  if (lpbih->biSize != sizeof(BITMAPCOREHEADER))
+  {
+    if (lpbih->biClrUsed != 0)
+    {
+      return (WORD)lpbih->biClrUsed;
+    }
+
+    bits = lpbih->biBitCount;
+  }
+  else
+  {
+    bits = lpbch->bcBitCount;
+  }
+
+  if (bits > 8)
+  {
+    return 0;  // since biClrUsed is 0, we don't have an optimal palette
+  }
+  else
+  {
+    return (1 << bits);
+  }
+}
+
+/******************************************************************************
+ *                                                                            *
+ *  FUNCTION   : DIBInfo(HANDLE hbi, LPBITMAPINFOHEADER lpbih)                *
+ *                                                                            *
+ *  PURPOSE    : Retrieves the DIB info associated with a CF_DIB              *
+ *               format memory block.                                         *
+ *                                                                            *
+ *  RETURNS    : TRUE  - if successful.                                       *
+ *               FALSE - otherwise                                            *
+ *                                                                            *
+ *****************************************************************************/
+BOOL DIBInfo(HANDLE hbi, LPBITMAPINFOHEADER lpbih)
+{
+  if (hbi)
+  {
+    *lpbih = *(LPBITMAPINFOHEADER)hbi;
+
+    // fill in the default fields
+    if (lpbih->biSize != sizeof(BITMAPCOREHEADER))
+    {
+      if (lpbih->biSizeImage == 0L)
+      {
+        // explain the calculation
+        // From wikipedia
+        // The bits representing the bitmap pixels are packed in rows. The size of each row is rounded up to a multiple of 4 bytes (a 32-bit DWORD) by padding.
+        // row_size = floor((bits_per_pixel * image_width + 31) / 32) * 4
+        lpbih->biSizeImage = ((((lpbih->biWidth * lpbih->biBitCount) + 31) >> 5) << 2) * lpbih->biHeight;
+      }
+
+      if (lpbih->biClrUsed == 0L)
+      {
+        lpbih->biClrUsed = DIBNumColors(lpbih);
+      }
+    }
+
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/******************************************************************************
+ *                                                                            *
+ *  FUNCTION   :OpenDIB(LPSTR szFilename)                                     *
+ *                                                                            *
+ *  PURPOSE    :Open a DIB file and create a memory DIB -- a memory handle    *
+ *              containing BITMAPINFO, palette data and the bits.             *
+ *                                                                            *
+ *  RETURNS    :A handle to the DIB.                                          *
+ *                                                                            *
+ *****************************************************************************/
+HANDLE OpenDIB(LPSTR szFilename)
+{
+  HFILE hFile;
+  BITMAPINFOHEADER bih;
+  LPBITMAPINFOHEADER lpbih;
+  DWORD dwLen = 0;
+  DWORD dwBits;
+  HANDLE hDIB;
+  HANDLE hMem;
+  OFSTRUCT of;
+
+  // Open the file and read DIB information
+  hFile = OpenFile(szFilename, &of, (UINT)OF_READ);
+  if (hFile == HFILE_ERROR)
+  {
+    return NULL;
+  }
+
+  DIBInfo(hDIB, &bih);
+  // TODO - WIP
+}
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -109,11 +215,47 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+  int wmId, wmEvent;
+  PAINTSTRUCT ps;
+  // Handle to GDI device context
+  HDC hDC;
+  // Handle to DDB (device-dependent bitmap)
+  HBITMAP hBitmap;
+
+  HFONT hFont;
+  NONCLIENTMETRICS ncm = {0};
+  ncm.cbSize           = sizeof(NONCLIENTMETRICS);
+
+  static HWND hwndButton;
+  static HWND hwndButtonExit;
+  static HANDLE hDIB = NULL;
+
+  char szDirName[MAX_PATH];
+  char szFilename[MAX_PATH]   = "\0";
+  char szBitmapName[MAX_PATH] = "\\Waterfall.bmp";
+  // char szBitmapName[MAX_PATH] = "\\tulips256.bmp";
+  OPENFILENAMEA ofn;
+
   switch (message)
   {
+    case WM_CREATE:
+    {
+      // Creates a font from the current theme's caption font
+      SystemParametersInfo(SPI_GETNONCLIENTMETRICS, NULL, &ncm, NULL);
+      hFont = CreateFontIndirect(&ncm.lfCaptionFont);
+
+      // Gets the device context for the current window
+      hDC = GetDC(hWnd);
+
+      // Gets the directory of the current project and loads Waterfall.bmp
+      GetCurrentDirectoryA(MAX_PATH, szDirName);
+      strcat_s(szDirName, szBitmapName);
+      strcat_s(szFilename, szDirName);
+      hDIB = OpenDIB(szFilename);
+    }
     case WM_COMMAND:
     {
-      int wmId = LOWORD(wParam);
+      wmId = LOWORD(wParam);
       // Parse the menu selections:
       switch (wmId)
       {
@@ -137,24 +279,4 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       return DefWindowProc(hWnd, message, wParam, lParam);
   }
   return 0;
-}
-
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-  UNREFERENCED_PARAMETER(lParam);
-  switch (message)
-  {
-    case WM_INITDIALOG:
-      return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-      if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-      {
-        EndDialog(hDlg, LOWORD(wParam));
-        return (INT_PTR)TRUE;
-      }
-      break;
-  }
-  return (INT_PTR)FALSE;
 }
